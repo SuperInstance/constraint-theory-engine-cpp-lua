@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        avx512: [ON, OFF]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ liblua5.4-dev pkg-config
+
+      - name: Configure (AVX-512 ${{ matrix.avx512 }})
+        run: |
+          mkdir -p build && cd build
+          cmake .. \
+            -DENABLE_AVX512=${{ matrix.avx512 }} \
+            -DENABLE_LUA=ON \
+            -DENABLE_TESTS=ON \
+            -DENABLE_BENCHMARKS=ON
+
+      - name: Build
+        run: cd build && make -j$(nproc)
+
+      - name: Test
+        run: cd build && ctest --output-on-failure
+
+      - name: Benchmark
+        run: cd build && ./bench_throughput 10000 5 5
