@@ -61,7 +61,11 @@ public:
         levels_.clear();
         level_ = 0;
 
-        while (true) {
+        // Iteration cap to prevent pathological loops
+        const int max_iters = 10000;
+        int iters = 0;
+
+        while (++iters < max_iters) {
             auto conflict = propagate(result.propagations);
 
             if (conflict.has_value()) {
@@ -81,29 +85,32 @@ public:
                 int bt_level = compute_backtrack_level(learned);
                 backtrack(bt_level);
 
-                // Add learned clause and propagate
+                // Add learned clause (will be propagated next iteration)
                 clauses_.push_back(learned);
             } else {
-                // Check if all variables assigned
-                if (trail_.size() >= num_vars_) {
+                // No conflict — check if all variables assigned
+                auto var = pick_variable();
+                if (!var.has_value()) {
+                    // All variables assigned — satisfiable
                     result.satisfiable = true;
                     for (const auto& entry : trail_) {
-                        auto var = std::abs(entry.lit);
-                        result.assignment[var] = (entry.lit > 0);
+                        auto v = std::abs(entry.lit);
+                        result.assignment[v] = (entry.lit > 0);
                     }
                     return result;
                 }
 
                 // Decision: pick next unassigned variable
                 ++level_;
-                auto var = pick_variable();
-                if (var.has_value()) {
-                    Literal lit = static_cast<Literal>(*var);
-                    decide(lit);
-                    ++result.decisions;
-                }
+                Literal lit = static_cast<Literal>(*var);
+                decide(lit);
+                ++result.decisions;
             }
         }
+
+        // Should not reach here for well-formed problems
+        result.satisfiable = false;
+        return result;
     }
 
     /// Get current clauses (including learned)
@@ -116,47 +123,51 @@ private:
     uint32_t num_vars_ = 0;
     int level_ = 0;
 
-    /// Boolean Constraint Propagation
+    /// Boolean Constraint Propagation — fixed-point scan
+    /// Scans all clauses repeatedly until no new propagations are found.
     std::optional<Clause> propagate(uint64_t& prop_count) {
-        // Start from current trail end, propagate implications
-        size_t start = trail_.empty() ? 0 : trail_.size() - 1;
-
-        for (size_t i = start; i < trail_.size(); ++i) {
-            Literal lit = trail_[i].lit;
-            Literal neg_lit = -lit;
-
+        bool changed = true;
+        while (changed) {
+            changed = false;
             for (const auto& clause : clauses_) {
                 bool has_true = false;
-                bool has_false = false;
                 int unassigned = 0;
                 Literal unit_lit = 0;
-                bool all_false = true;
+                bool all_assigned_false = true;
 
                 for (auto cl : clause) {
                     auto val = eval_literal(cl);
                     if (val.has_value()) {
-                        if (*val) { has_true = true; all_false = false; break; }
-                        else { has_false = true; }
+                        if (*val) {
+                            has_true = true;
+                            all_assigned_false = false;
+                            break;  // Clause satisfied, skip
+                        }
+                        // Literal is false under assignment — keep checking
                     } else {
                         ++unassigned;
                         unit_lit = cl;
-                        all_false = false;
+                        all_assigned_false = false;
                     }
                 }
 
-                // All false → conflict
-                if (all_false && !has_true) {
+                // All literals evaluated to false → conflict
+                if (all_assigned_false && !has_true) {
                     return clause;
                 }
 
-                // Unit clause → propagate
-                if (!has_true && !has_false && unassigned == 1) {
-                    trail_.push_back({unit_lit, level_, clause});
-                    ++prop_count;
+                // Unit clause: no true literal, exactly 1 unassigned → propagate
+                if (!has_true && unassigned == 1) {
+                    // Double-check not already on trail (avoid duplicates)
+                    auto existing = eval_literal(unit_lit);
+                    if (!existing.has_value()) {
+                        trail_.push_back({unit_lit, level_, clause});
+                        ++prop_count;
+                        changed = true;
+                    }
                 }
             }
         }
-
         return std::nullopt;
     }
 
