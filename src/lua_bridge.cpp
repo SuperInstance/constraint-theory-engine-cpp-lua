@@ -21,7 +21,7 @@ namespace flux {
 
 namespace lua {
 
-static int l_check(lua_State* L) {
+int l_check(lua_State* L) {
     int32_t value = static_cast<int32_t>(luaL_checkinteger(L, 1));
     int32_t lo    = static_cast<int32_t>(luaL_checkinteger(L, 2));
     int32_t hi    = static_cast<int32_t>(luaL_checkinteger(L, 3));
@@ -36,7 +36,7 @@ static int l_check(lua_State* L) {
     return 1;
 }
 
-static int l_batch_check(lua_State* L) {
+int l_batch_check(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE); // values
     luaL_checktype(L, 2, LUA_TTABLE); // constraints
 
@@ -95,7 +95,7 @@ static int l_batch_check(lua_State* L) {
     return 1;
 }
 
-static int l_solve(lua_State* L) {
+int l_solve(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     size_t n = lua_rawlen(L, 1);
@@ -146,7 +146,7 @@ static int l_solve(lua_State* L) {
     return 1;
 }
 
-static int l_emit_ir(lua_State* L) {
+int l_emit_ir(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     std::vector<Clause> clauses;
@@ -173,7 +173,7 @@ static int l_emit_ir(lua_State* L) {
     return 1;
 }
 
-static int l_saturate(lua_State* L) {
+int l_saturate(lua_State* L) {
     int32_t val = static_cast<int32_t>(luaL_checkinteger(L, 1));
     lua_pushinteger(L, static_cast<lua_Integer>(sat8(val)));
     return 1;

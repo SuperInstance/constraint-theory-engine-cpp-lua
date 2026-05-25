@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 /// flux::LuaBridge — Bridge between C++ constraint engine and LuaJIT
 ///
 /// Registers C++ constraint functions in a Lua state.
