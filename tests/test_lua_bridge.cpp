@@ -27,6 +27,7 @@ int main() {
 
 #ifndef LUA_BRIDGE_TEST_SKIP
 #include "../include/flux/lua_bridge.hpp"
+#include <cassert>
 
 void test_register_module() {
     lua_State* L = luaL_newstate();
