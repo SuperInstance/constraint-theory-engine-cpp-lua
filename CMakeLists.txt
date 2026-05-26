@@ -108,7 +108,9 @@ if(ENABLE_TESTS)
 
     add_executable(test_avx512 tests/test_avx512.cpp)
     target_link_libraries(test_avx512 PRIVATE flux_engine)
-    add_test(NAME avx512 COMMAND test_avx512)
+    if(ENABLE_AVX512)
+        add_test(NAME avx512 COMMAND test_avx512)
+    endif()
 
     if(ENABLE_LUA)
         add_executable(test_lua_bridge tests/test_lua_bridge.cpp)
