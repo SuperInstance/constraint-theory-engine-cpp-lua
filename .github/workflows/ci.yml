@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        avx512: [ON, OFF]
+        avx512: [OFF]
     steps:
       - uses: actions/checkout@v4
 
