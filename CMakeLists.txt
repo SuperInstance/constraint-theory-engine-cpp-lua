@@ -120,6 +120,30 @@ if(ENABLE_TESTS)
         target_link_libraries(test_lua_bridge PRIVATE ${LUA_LIBRARIES})
         add_test(NAME lua_bridge COMMAND test_lua_bridge)
     endif()
+
+    # Extended tests
+    add_executable(test_emitter tests/test_emitter.cpp)
+    target_link_libraries(test_emitter PRIVATE flux_engine)
+    add_test(NAME emitter COMMAND test_emitter)
+
+    add_executable(test_constraint_extended tests/test_constraint_extended.cpp)
+    target_link_libraries(test_constraint_extended PRIVATE flux_engine)
+    add_test(NAME constraint_extended COMMAND test_constraint_extended)
+
+    add_executable(test_solver_extended tests/test_solver_extended.cpp)
+    target_link_libraries(test_solver_extended PRIVATE flux_engine)
+    add_test(NAME solver_extended COMMAND test_solver_extended)
+endif()
+
+# ── Lua script tests ─────────────────────────────────────────────────────────
+if(ENABLE_LUA)
+    find_program(LUA_INTERP NAMES lua5.4 lua luajit)
+    if(LUA_INTERP)
+        add_test(NAME lua_flux_scripts
+            COMMAND ${LUA_INTERP} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_lua_flux.lua
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+    endif()
 endif()
 
 # ── Benchmarks ───────────────────────────────────────────────────────────────
