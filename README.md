@@ -118,3 +118,7 @@ mkdir build && cd build && cmake .. && make -j$(nproc)
 ## License
 
 MIT
+
+## Documentation
+
+📚 [OpenConstruct Docs](https://github.com/SuperInstance/openconstruct-docs)
