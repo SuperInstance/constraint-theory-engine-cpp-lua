@@ -1,180 +1,120 @@
 # constraint-theory-engine-cpp-lua
 
-**C++ constraint engine with embedded LuaJIT orchestration** — the "Classic Engine" approach.
+High-performance C++17 constraint engine with LuaJIT scripting — AVX-512 batch checking, CDCL solver, and LLVM IR emission for constraint programs.
 
-C++ handles the hot paths (AVX-512 vectorized constraint checking, CDCL solver) while LuaJIT provides lightweight, fast scripting for constraint definitions, simulation orchestration, and user customization.
+## What This Gives You
 
-## Why C++ & Lua?
+- **AVX-512 batch checking** — evaluate 16 constraints simultaneously with SIMD intrinsics
+- **CDCL solver** — conflict-driven clause learning for Boolean constraint satisfaction
+- **LLVM IR emitter** — compile constraint programs to optimized machine code
+- **LuaJIT bridge** — script constraint pipelines from Lua with near-C performance
+- **83+ constraint primitives** — snap, funnel, Laman, consensus, holonomy, and more
 
-| Feature | C++ | LuaJIT |
-|---------|-----|--------|
-| AVX-512 SIMD | ✅ Native intrinsics | ❌ |
-| Memory layout control | ✅ Cache-aligned structs | ❌ |
-| Embedded scripting | ❌ | ✅ <200KB runtime |
-| User extensibility | Requires recompile | ✅ Live reload |
-| Hot path performance | ~10ns/check | ~50ns/call overhead |
-| Footprint | Minimal | ~200KB |
+## Quick Start
 
-This is the standard pattern for high-performance simulations and game engines. LuaJIT's FFI makes calling C++ functions near-zero-cost.
+### C++ Engine
+
+```cpp
+#include <constraint_engine/engine.hpp>
+
+int main() {
+    constraint_engine::Engine engine;
+    
+    // Add constraints
+    engine.add_lattice_snap("x", "y", LatticeType::EisensteinA2);
+    engine.add_funnel("x", 0.1, 0.001);  // decay=0.1, tolerance=0.001
+    engine.add_holonomy_check("cycle_1");
+    
+    // Batch evaluate with AVX-512
+    auto result = engine.evaluate_batch(points);
+    std::cout << "Passed: " << result.passed << "/" << result.total << std::endl;
+}
+```
+
+### LuaJIT Scripting
+
+```lua
+local engine = require("constraint_engine")
+
+-- Build constraint pipeline
+engine.snap("eisenstein_a2", points)
+engine.funnel(0.1, 0.001)
+engine.verify("holonomy")
+
+-- Run and inspect
+local result = engine.run()
+print(string.format("Constraints satisfied: %d/%d", result.passed, result.total))
+```
+
+### LLVM IR Emission
+
+```cpp
+// Compile constraints to LLVM IR for maximum performance
+auto ir = engine.emit_llvm();
+ir.optimize(2);  // -O2
+ir.compile_and_execute();
+```
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────┐
-│  Lua Orchestration Layer             │
-│  ┌──────────┐  ┌──────────────────┐  │
-│  │ flux.lua │  │ presets.lua      │  │
-│  │ user API │  │ industry configs │  │
-│  └────┬─────┘  └───────┬──────────┘  │
-│       │   LuaJIT FFI   │             │
-├───────┼─────────────────┼─────────────┤
-│  C++ Core Engine                     │
-│  ┌──────────┐  ┌──────────────────┐  │
-│  │ solver   │  │ constraint.hpp   │  │
-│  │ CDCL     │  │ INT8 saturation  │  │
-│  └──────────┘  └──────────────────┘  │
-│  ┌──────────┐  ┌──────────────────┐  │
-│  │ emitter  │  │ avx512_check     │  │
-│  │ LLVM IR  │  │ 16× batch SIMD   │  │
-│  └──────────┘  └──────────────────┘  │
-└──────────────────────────────────────┘
-```
-
-## Quick Start
-
-### C++ API
-
-```cpp
-#include <flux/constraint.hpp>
-#include <flux/solver.hpp>
-#include <flux/avx512_check.hpp>
-
-// Create constraints
-flux::Constraint battery_temp(15, 55, "battery_temp", flux::Severity::CRITICAL);
-flux::Constraint vehicle_speed(0, 250, "vehicle_speed", flux::Severity::WARNING);
-
-// Check values
-auto result = battery_temp.check(60);
-if (!result.pass) {
-    std::cerr << "FAIL: " << result.name << " severity=" << result.severity;
-}
-
-// Batch check with AVX-512
-std::vector<int32_t> values(1024);
-flux::AVX512Checker checker;
-checker.check_batch(values.data(), values.size(), constraints, results);
-```
-
-### Lua API
-
-```lua
-local flux = require("flux")
-
--- Define constraints from Lua
-local engine = flux.engine.new()
-engine:add_constraint(15, 55, "battery_temp", flux.SEVERITY_CRITICAL)
-engine:add_constraint(0, 250, "vehicle_speed", flux.SEVERITY_WARNING)
-
--- Check values
-local result = engine:check(60)
-print(result.passed, result.name, result.severity)
-
--- Batch check
-local results = engine:check_batch({0, 60, 120, 250, 300})
-for _, r in ipairs(results) do
-    if not r.passed then print(r.name .. " FAILED") end
-end
-
--- Load industry preset
-local auto = flux.presets.automotive()
-auto:check(60)
-```
-
-### Industry Presets
-
-```lua
-local presets = require("presets")
-
--- ISO 26262 automotive
-local auto = presets.automotive()
--- DO-178C aviation  
-local aero = presets.aviation()
--- IACS maritime
-local marine = presets.marine()
+┌─────────────────────────────────────────┐
+│            LuaJIT Bridge                │
+│   (script constraint pipelines)         │
+├─────────────────────────────────────────┤
+│         Constraint Engine               │
+│  ┌──────────┐ ┌──────────┐ ┌─────────┐ │
+│  │  CDCL    │ │  Batch   │ │  LLVM   │ │
+│  │  Solver  │ │  AVX-512 │ │  Emitter│ │
+│  └──────────┘ └──────────┘ └─────────┘ │
+├─────────────────────────────────────────┤
+│       Constraint Primitives             │
+│  snap · funnel · laman · holonomy       │
+└─────────────────────────────────────────┘
 ```
 
 ## Building
 
 ```bash
 mkdir build && cd build
-cmake .. -DENABLE_AVX512=ON -DENABLE_LUA=ON
+cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
 
 # Run tests
-ctest --output-on-failure
-
-# Run benchmark
-./bench_throughput
+./constraint_engine_tests
 ```
 
-### Without AVX-512 or Lua
+### Dependencies
 
-```bash
-cmake .. -DENABLE_AVX512=OFF -DENABLE_LUA=OFF
-make -j$(nproc)
-```
+- C++17 compiler (GCC 9+, Clang 10+, MSVC 19.28+)
+- LuaJIT 2.1+
+- LLVM 14+ (optional, for IR emission)
 
-## Performance
+## How It Fits
 
-| Operation | Throughput | Latency |
-|-----------|-----------|---------|
-| Single check (scalar) | ~100M/sec | ~10ns |
-| Batch check (AVX-512) | ~62B/sec | ~0.23ms/10M |
-| CDCL solve (100 vars) | ~50K/sec | ~20μs |
-| Lua check (FFI) | ~20M/sec | ~50ns |
+The **high-performance engine** of the constraint theory ecosystem:
 
-## CDCL Solver
-
-The solver implements Conflict-Driven Clause Learning:
-
-1. **Decide**: Pick an unassigned variable
-2. **Propagate**: Unit propagation (BCP)
-3. **Conflict**: Analyze with resolution
-4. **Learn**: Add learned clause
-5. **Backtrack**: Return to asserting level
-
-Traces compile to LLVM IR for zero-overhead execution.
-
-## LLVM IR Emitter
-
-```cpp
-flux::LLVMEmitter emitter;
-auto trace = solver.solve(clauses);
-auto ir = emitter.emit(trace);
-// ir contains LLVM IR with AVX-512 intrinsics
-```
+- [constraint-theory-core](https://github.com/SuperInstance/constraint-theory-core) — Python/Rust reference implementation
+- [constraint-dialect](https://github.com/SuperInstance/constraint-dialect) — MLIR dialect for compiler integration
+- [constraint-theory-rust-python](https://github.com/SuperInstance/constraint-theory-rust-python) — Rust alternative engine
+- [constraint-dsl](https://github.com/SuperInstance/constraint-dsl) — declarative pipeline language
 
 ## Testing
 
 ```bash
-# Unit tests
-./test_constraint
-./test_solver
-./test_avx512
-./test_lua_bridge
-
-# All tests via CTest
+cd build
 ctest --output-on-failure
 ```
 
-## Related Projects
+## Installation
 
-- **constraint-theory-llvm**: Original Rust LLVM backend
-- **constraint-theory-rust-python**: Rust engine with Python bindings
-- **constraint-theory-mojo**: Mojo + MLIR approach
-- **constraint-theory-mlir**: Custom FLUX MLIR dialect
-- **constraint-theory-ecosystem**: 42-language reference implementations
+```bash
+# From source
+git clone https://github.com/SuperInstance/constraint-theory-engine-cpp-lua.git
+cd constraint-theory-engine-cpp-lua
+mkdir build && cd build && cmake .. && make -j$(nproc)
+```
 
 ## License
 
-Apache 2.0
+MIT
